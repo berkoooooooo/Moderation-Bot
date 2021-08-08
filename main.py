@@ -10,7 +10,6 @@ import aiofiles
 from discord_components import DiscordComponents, Button, ButtonStyle, InteractionType, component
 import aiohttp
 import json
-import keep_alive
 
 intents = discord.Intents.default()
 intents.members = True
@@ -62,29 +61,6 @@ async def on_ready():
     await asyncio.sleep(10)
     await bot.change_presence(status=discord.Status.online, activity=discord.Game('Made by unrexIstIq#0001'))
     print('Bot is ready.')
-
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def rules(ctx, role: discord.Role, member: discord.Member):
-    embed = discord.Embed(title="__Rules__", description="Please Read", color=discord.Colour.red())
-
-    embed.add_field(name="1. Don't be an asshole", value="We are a friendly and welcoming community. Please treat everyone the way you want to be treated.", inline=False)
-    embed.add_field(name="2. Code of Conduct", value="We have zero hate policy. Racism, hate speech, harassment as well as insulting political discussions are not allowed and may lead to a ban. More information below.", inline=False)
-    embed.add_field(name="3. No adverts", value="Please do not post any adverts or links to other Discord servers.", inline=False)
-    embed.add_field(name="4. Channels", value="Please Use the correct channels", inline=False)
-    embed.add_field(name="5. Language", value="Feel free to post in English in any channel", inline=False)
-    embed.add_field(name="6. Invite", value="If you want to invite someone to this server, use: https://discord.gg/haNHevAEHh", inline=False)
-    embed.add_field(name="7. Bot Invite", value="If you want our Bot, please do 'u!invite' to get the invite for our Bot.", inline=False),
-    component=[
-        Button(style=ButtonStyle.green, label="Accept", id="1")
-    ]
-    await ctx.send(embed=embed, components=component)
-    res = await bot.wait_for("button_click")
-    if res.channel == ctx.message.channel:
-        await res.respond(
-            await member.add_roles(role)
-        )
-
 
 @bot.event
 async def on_raw_reaction_add(payload):
@@ -200,24 +176,25 @@ async def help(ctx):
     embed.add_field(name='Fun', value='Coming Soon', inline=False)
     embed.set_footer(text='Help'),
     component=[
-        [Button(style=ButtonStyle.green, label="Moderation"),
-         Button(style=ButtonStyle.red, label="Fun", disabled=True),
+        [Button(style=ButtonStyle.green, label="Moderation", custom_id= "1"),
+         Button(style=ButtonStyle.red, label="Fun"),
          Button(style=ButtonStyle.URL, label="Website", url="https://www.moderation-bot.ml")]
         ]
     await ctx.message.add_reaction("<a:5845_tickgreen:871325490844164158>")
     await ctx.send(embed=embed, components=component)
     res = await bot.wait_for("button_click")
-    if res.channel == ctx.message.channel:
-        await res.respond(
+    if res.component.custom_id == 1:
+        if res.channel == ctx.message.channel:
+            await res.respond(
             type=InteractionType.ChannelMessageWithSource,
             embed=embed2
         )
-    res2 = await bot.wait_for("button_click")
-    if res2.channel == ctx.message.channel:
-        await res2.respond(
-            type=InteractionType.ChannelMessageWithSource,
-            embed=embed3
-        )
+    else:
+          if res.channel == ctx.message.channel:
+              await res.respond(
+                  type=InteractionType.ChannelMessageWithSource,
+                  embed=embed3
+                )
 
 
 @bot.command()
@@ -276,6 +253,93 @@ async def meme(ctx):
             embed.set_image(url=res['data']['children'] [random.randint(0, 25)]['data']['url'])
             await ctx.message.delete()
             await ctx.send(embed=embed)
+
+@bot.command()
+@commands.has_permissions(manage_messages=True)
+async def gcreate(ctx, time=None, *, prize=None):
+    if time == None:
+        return await ctx.send("Please give us a Time for the Giveway")
+    elif prize == None:
+        return await ctx.send("Please describe a Price")
+    embed = discord.Embed(
+        title=f"{prize}",
+        description=f"React with :gift: to enter the Giveway!\n Ends in: {time}\n Created by: {ctx.author.mention}",
+        color=discord.Colour.blue()
+    )
+    time_convert = {"s": 1, "m": 60, "h": 3600, "d": 86400}
+    gawtime = int(time[0]) * time_convert[time[-1]]
+    gaw_msg = await ctx.send(embed=embed)
+    await gaw_msg.add_reaction('🎁')
+    await asyncio.sleep(gawtime)
+    new_gaw_msg = await ctx.channel.fetch_message(gaw_msg.id)
+    users = await new_gaw_msg.reactions[0].users().flatten()
+    users.pop(users.index(bot.user))
+    if len(users) <= 0:
+        emptyEmbed = discord.Embed(title=f'{prize}',
+                                   description=f"👑 │ Winner: `- :(`\n"
+                                               f"👤 │ Created by: {ctx.author.mention}", color=0xc12e2e)
+        emptyEmbed.set_footer(text='Giveway has ended')
+        await gaw_msg.edit("**⛔⛔ GIVEWAY HAS ENDED! ⛔⛔**", embed=emptyEmbed)
+        return
+    if len(users) > 0:
+        winner = random.choice(users)
+        winnerEmbed = discord.Embed(title=f'{prize}',
+                                    description=f"👑 │ Winner: {winner.mention}\n"
+                                                f"👤 │ Created by: {ctx.author.mention}", color=0xc12e2e)
+        winnerEmbed.set_footer(text='Giveway ended')
+        await gaw_msg.edit(content=f'**⛔⛔ GIVEWAY HAS ENDED! ⛔⛔**', embed=winnerEmbed)
+        await ctx.channel.send(f'Good one, {winner.mention}! You have won **{prize}**!')
+        return
+
+@bot.command(name="afk")
+async def afk(ctx, *, args: str = 'No Reason'):
+    embed = discord.Embed(title=f"{ctx.author.name} went AFK",description=f'AFK Reason: {args}', colour=0x0ad4b7)
+    await ctx.send(embed=embed)
+
+@bot.command()
+async def say(ctx, *, message:str):
+    embed = discord.Embed(title=ctx.author.display_name, color=discord.Color.blue())
+    embed.add_field(name="Says:", value=message)
+    await ctx.send(embed=embed)
+
+@bot.command()
+async def kill(ctx, *, member):
+    author_name = ctx.message.author.name
+    await ctx.send (f'{author_name} has killed {member} <a:kill_him:849361271576985631> \n https://tenor.com/view/duck-mad-angry-i-will-kill-you-gif-17283481')
+
+@bot.command()
+async def hug(ctx, *, member):
+    author_name = ctx.message.author.name
+    await ctx.send (f'{author_name} hugged {member} <a:hug:849361400379605012> \n https://tenor.com/view/marriage-marry-up-kiss-gif-4360989')
+
+@bot.command()
+async def covid(ctx):
+    List = ["Positive", "Negative💉"]
+    test = random.choice(List)
+    embedVar = discord.Embed(title=":mask: Corona Test Result: ", description="Do you have Corona?", color=discord.Color.blue())
+    embedVar.add_field(name=f"{ctx.message.author}", value=f"has a {test} Corona Test!")
+    await ctx.send(embed=embedVar)
+
+@bot.command()
+async def gay(ctx):
+    zeroto100 = random.randint(0, 100)
+    embedVar = discord.Embed(title=":rainbow_flag: Gay Rate: ", description="Your gayness", color=discord.Color.blue())
+    embedVar.add_field(name=f"{ctx.message.author}", value=f"is {zeroto100} % gay ! :rainbow_flag:")
+    await ctx.send(embed=embedVar)
+
+@bot.command()
+async def cool(ctx):
+    zeroto100 = random.randint(0, 100)
+    embedVar = discord.Embed(title="How cool are you?", color=discord.Color.blue())
+    embedVar.add_field(name=f"{ctx.message.author}", value=f"is {zeroto100} % cool")
+    await ctx.send(embed=embedVar)
+
+@bot.command()
+async def number(ctx):
+    zeroto100 = random.randint(0, 100)
+    embedVar = discord.Embed(title="Random Number", color=discord.Color.blue())
+    embedVar.add_field(name=f"Your number is:", value=f" {zeroto100}")
+    await ctx.send(embed=embedVar)
 
 @bot.command()
 async def qtrue(ctx, *, args):
@@ -610,6 +674,5 @@ async def ticket_config(ctx):
 
         await ctx.channel.send(embed=embed)
 
-keep_alive.keep_alive()
-token = os.environ['bot_token']
-bot.run('token')
+
+bot.run('ODYzMTE4MDkwNjE5NTg0NTMz.YOiPXA.H9f6pTpXOrkgJu19j1yqoBx62uQ')
